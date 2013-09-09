@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<title>{{ title }}</title>
+	<link rel='stylesheet' href='/stylesheets/bootstrap.css' />
+	<link rel='stylesheet' href='/stylesheets/bootstrap-theme.css' />
+	<link rel='stylesheet' href='/stylesheets/style.css' />
+
+	<script src="/javascripts/jquery.js"></script>
+	<script src="/javascripts/bootstrap.js"></script>
+	<script src="/javascripts/angular.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+
+	<script type="text/javascript">
+
+		var myApp = angular.module('MyDevApp', ['Services']);
+
+
+		myApp.controller('Monitoring', function($scope, Socket) {
+
+			$scope.stats = {};
+
+			Socket.on('news', function(stats) {
+				$scope.stats = stats;
+			});
+		});
+
+
+		angular.module('Services', []).
+		    factory('Socket', function($rootScope) {
+
+		        var socket = io.connect();
+
+		        return {
+		            on: function(eventName, callback) {
+		                socket.on(eventName, function() {
+		                    var args = arguments;
+		                    $rootScope.$apply(function() {
+		                        callback.apply(socket, args);
+		                    });
+		                });
+		            },
+		            emit: function(eventName, data, callback) {
+		                if(typeof data == 'function') {
+		                    callback = data;
+		                    data = {};
+		                }
+		                socket.emit(eventName, data, function() {
+		                    var args = arguments;
+		                    $rootScope.$apply(function() {
+		                        if(callback) {
+		                            callback.apply(socket, args);
+		                        }
+		                    });
+		                });
+		            },
+		            emitAndListen: function(eventName, data, callback) {
+		                this.emit(eventName, data, callback);
+		                this.on(eventName, callback);
+		            }
+		        };
+		    });
+
+		angular.module('ng').filter('bytesAsGigabytes', function () {
+			return function (mb) {
+				return mb/1024/1024/1024;
+			}
+		});
+
+
+	</script>
+
+
+
+
+	</head>
+	<body>
+		<div class="container" ng-app="MyDevApp">
+			<div class="row" ng-controller="Monitoring">
+				<div class="col-md-8">
+					<p>mem: {{stats.freemem | bytesAsGigabytes | number:3}}/{{stats.totalmem | bytesAsGigabytes | number:3}} GB</p>
+					 <table class="table table-striped">
+					 	<tr>
+							<th ng-repeat="(key, time) in stats.cpus[0]">{{key}}</th>
+						</tr>
+						<tr ng-repeat="cpu in stats.cpus">
+							<td ng-repeat="(key, time) in cpu">{{time | number:2}}%</td>
+						</tr>
+					</table>
+				</div>
+				<div class="col-md-4"></div>
+			</div>
+		</div>
+	</body>
+</html>
