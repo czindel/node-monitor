@@ -5,11 +5,11 @@
 
 var express = require('express');
 var routes = require('./routes');
-var user = require('./routes/user');
 var http = require('http');
 var path = require('path');
 var _ = require('underscore');
 var os = require('os');
+
 
 var app = express();
 
@@ -31,11 +31,9 @@ if ('development' == app.get('env')) {
 }
 
 app.get('/', routes.index);
-app.get('/users', user.list);
 
 
 var server = http.createServer(app);
-
 var io = require('socket.io').listen(server);
 
 io.set('log level', 1);
@@ -53,34 +51,11 @@ io.sockets.on('connection', function (socket) {
 		socket.emit('news', {
 			totalmem: os.totalmem(),
 			freemem : os.freemem(),
-			cpus: getCpuUsage(os.cpus())
+			cpus: os.cpus(),
+      process: process.memoryUsage()
 		});
-	}, 3000)
+	}, 2000)
 });
 
-function getCpuUsage(data){
-
-  var cpus = _.pluck(data, 'times');
-
-  var result = [];
-
-  _.each(cpus, function(cpu){
-     var total = 0;
-
-      _.each(cpu, function(ticks){
-        total += ticks;
-      });
-
-      var cpuPercents = {};
-
-      _.each(cpu, function(value, key){
-        cpuPercents[key] = value/total*100;
-      });
-
-      result.push(cpuPercents);
-  })
-
-  return result;
-}
 
 

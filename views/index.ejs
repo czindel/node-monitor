@@ -6,9 +6,10 @@
 	<link rel='stylesheet' href='/stylesheets/bootstrap-theme.css' />
 	<link rel='stylesheet' href='/stylesheets/style.css' />
 
-	<script src="/javascripts/jquery.js"></script>
-	<script src="/javascripts/bootstrap.js"></script>
-	<script src="/javascripts/angular.js"></script>
+	<script src="/javascripts/lib/jquery.js"></script>
+	<script src="/javascripts/lib/underscore.js"></script>
+	<script src="/javascripts/lib/bootstrap.js"></script>
+	<script src="/javascripts/lib/angular.js"></script>
 	<script src="/socket.io/socket.io.js"></script>
 
 	<script type="text/javascript">
@@ -21,6 +22,7 @@
 			$scope.stats = {};
 
 			Socket.on('news', function(stats) {
+
 				$scope.stats = stats;
 			});
 		});
@@ -61,13 +63,41 @@
 		        };
 		    });
 
-		angular.module('ng').filter('bytesAsGigabytes', function () {
+		angular.module('MyDevApp').filter('bytesToGigabytes', function () {
 			return function (mb) {
 				return mb/1024/1024/1024;
 			}
 		});
 
+		angular.module('MyDevApp').filter('bytesToMegabytes', function () {
+			return function (mb) {
+				return mb/1024/1024;
+			}
+		});
 
+		angular.module('MyDevApp').filter('ticksToPercent', function () {
+			return function (input) {
+				return convertTicksToPercent(input);
+			}
+		});
+
+
+		function convertTicksToPercent(cpu){
+
+			var total = 0;
+
+			_.each(cpu, function(ticks){
+				total += ticks;
+			});
+
+			var percents = {};
+
+			_.each(cpu, function(value, key){
+				percents[key] = value/total*100;
+			});
+
+			return percents;
+		}
 	</script>
 
 
@@ -78,14 +108,61 @@
 		<div class="container" ng-app="MyDevApp">
 			<div class="row" ng-controller="Monitoring">
 				<div class="col-md-8">
-					<p>mem: {{stats.freemem | bytesAsGigabytes | number:3}}/{{stats.totalmem | bytesAsGigabytes | number:3}} GB</p>
+					<h2>RAM</h2>
+					<table class="table table-striped">
+						<thead>
+					 		<tr>
+								<th>Type</th>
+								<th>Size in GB</th>
+								<th>Size in Byte</th>
+							</tr>
+					 	</thead>
+						<tbody>
+							<tr>
+								<th>Free</th>
+								<td>{{stats.freemem | bytesToGigabytes | number:2}}</td>
+								<td>{{stats.freemem}}</td>
+							</tr>
+							<tr>
+								<th>Total</th>
+								<td>{{stats.totalmem | bytesToGigabytes | number:2}}</td>
+								<td>{{stats.totalmem}}</td>
+							</tr>
+						</tbody>
+					</table>
+
+
+					<h2>CPU</h2>
 					 <table class="table table-striped">
-					 	<tr>
-							<th ng-repeat="(key, time) in stats.cpus[0]">{{key}}</th>
-						</tr>
-						<tr ng-repeat="cpu in stats.cpus">
-							<td ng-repeat="(key, time) in cpu">{{time | number:2}}%</td>
-						</tr>
+					 	<thead>
+					 		<tr>
+								<th></th>
+								<th ng-repeat="(key, time) in stats.cpus[0].times">{{key}}</th>
+							</tr>
+					 	</thead>
+					 	<tbody>
+							<tr ng-repeat="cpu in stats.cpus">
+								<td>{{cpu.model}}</td>
+								<td ng-repeat="(key, time) in cpu.times | ticksToPercent ">{{time | number:2}}%</td>
+							</tr>
+					 	</tbody>
+					</table>
+
+
+					<h2>Process</h2>
+					<table class="table table-striped">
+						<thead>
+					 		<tr>
+								<th>Type</th>
+								<th>Size</th>
+							</tr>
+					 	</thead>
+						<tbody>
+							<tr ng-repeat="(key, mem) in stats.process">
+								<th>{{key}}</th>
+								<td>{{mem | bytesToMegabytes | number:2}} MB</td>
+							</tr>
+						</tbody>
 					</table>
 				</div>
 				<div class="col-md-4"></div>
